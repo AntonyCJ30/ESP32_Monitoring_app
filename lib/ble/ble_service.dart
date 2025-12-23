@@ -3,10 +3,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'ble_config.dart';
 
-
-
-
-
 class BleService {
   BluetoothDevice? device;
   BluetoothCharacteristic? rxChar;
@@ -25,16 +21,20 @@ class BleService {
     }
   }
 
-  /// SCAN (UUID BASED)
+  /// SCAN
   Stream<List<ScanResult>> scan({Duration timeout = const Duration(seconds: 8)}) {
     FlutterBluePlus.startScan(timeout: timeout);
 
-    return FlutterBluePlus.scanResults.map((results) {
-      return results
-          .where((r) =>
-              r.advertisementData.serviceUuids.contains(BleConfig.provisioningService))
-          .toList();
-    });
+    return FlutterBluePlus.scanResults.map(
+      (results) => results
+          .where((r) => r.advertisementData.serviceUuids
+              .contains(BleConfig.provisioningService))
+          .toList(),
+    );
+  }
+
+  Future<void> stopScan() async {
+    await FlutterBluePlus.stopScan();
   }
 
   /// CONNECT
@@ -44,10 +44,8 @@ class BleService {
     await _discoverServices();
   }
 
-  /// DISCOVER SERVICES
   Future<void> _discoverServices() async {
     final services = await device!.discoverServices();
-
     for (final s in services) {
       if (s.uuid == BleConfig.provisioningService) {
         for (final c in s.characteristics) {
@@ -61,27 +59,19 @@ class BleService {
     }
   }
 
-  /// LISTEN TX
   Stream<String> txStream() {
     if (txChar == null) return const Stream.empty();
-
-    return txChar!.value.map((data) {
-      return utf8.decode(data);
-    });
+    return txChar!.value.map((data) => utf8.decode(data));
   }
 
-  /// WRITE RX
   Future<void> sendJson(Map<String, dynamic> data) async {
     if (rxChar == null) return;
-
-    final payload = jsonEncode(data);
     await rxChar!.write(
-      utf8.encode(payload),
+      utf8.encode(jsonEncode(data)),
       withoutResponse: true,
     );
   }
 
-  /// DISCONNECT
   Future<void> disconnect() async {
     await device?.disconnect();
     device = null;

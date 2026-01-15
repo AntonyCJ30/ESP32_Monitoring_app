@@ -1,27 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../auth/auth_controller.dart';
+import 'app_entry_screen.dart';
 
-class LoginScreen extends StatelessWidget {
-  LoginScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController emailCtrl = TextEditingController();
+  final TextEditingController passCtrl = TextEditingController();
+
+  bool _navigated = false;
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    /// ✅ After login success → return to AppEntry (only once)
+    if (auth.loggedIn && !auth.loading && !_navigated) {
+      _navigated = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AppEntryScreen()),
+          (route) => false,
+        );
+      });
+    }
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF101C22) : const Color(0xFFF6F7F8),
+      backgroundColor:
+          isDark ? const Color(0xFF101C22) : const Color(0xFFF6F7F8),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              /// 🔷 Logo Card
+              /// 🔷 Logo
               Container(
                 height: 96,
                 width: 96,
@@ -49,19 +78,19 @@ class LoginScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              /// 🔷 App Title
+              /// Title
               Text(
                 "VitalMonitor",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),
 
-              /// 🔷 Subtitle
               Text(
-                "Connect to your ESP32 device and monitor vitals securely.",
+                "Login to connect your device securely",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -70,11 +99,12 @@ class LoginScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              /// 🔷 Login Card
+              /// Login Card
               Container(
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 420),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1A2C36) : Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -107,22 +137,10 @@ class LoginScreen extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    /// Password + Forgot
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          "Password",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        Text(
-                          "Forgot password?",
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                    /// Password
+                    const Text(
+                      "Password",
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -131,7 +149,6 @@ class LoginScreen extends StatelessWidget {
                       decoration: _inputDecoration(
                         hint: "••••••••",
                         isDark: isDark,
-                        suffix: Icons.visibility,
                       ),
                     ),
 
@@ -154,63 +171,25 @@ class LoginScreen extends StatelessWidget {
                             ? null
                             : () {
                                 auth.login(
-                                  emailCtrl.text,
-                                  passCtrl.text,
+                                  emailCtrl.text.trim(),
+                                  passCtrl.text.trim(),
                                 );
                               },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                         child: auth.loading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Text(
                                 "Log In",
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                                style:
+                                    TextStyle(fontWeight: FontWeight.w600),
                               ),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    /// Divider
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            "Or continue with",
-                            style: TextStyle(
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[600],
-                            ),
-                          ),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    /// Social Buttons
-                    Row(
-                      children: [
-                        _socialButton(
-                          icon: Icons.g_mobiledata,
-                          label: "Google",
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 12),
-                        _socialButton(
-                          icon: Icons.apple,
-                          label: "Apple",
-                          isDark: isDark,
-                        ),
-                      ],
                     ),
                   ],
                 ),
@@ -243,42 +222,14 @@ class LoginScreen extends StatelessWidget {
   static InputDecoration _inputDecoration({
     required String hint,
     required bool isDark,
-    IconData? suffix,
   }) {
     return InputDecoration(
       hintText: hint,
-      suffixIcon: suffix != null ? Icon(suffix) : null,
       filled: true,
       fillColor: isDark ? Colors.black26 : Colors.grey[100],
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
-      ),
-    );
-  }
-
-  /// 🔧 Social button helper
-  static Expanded _socialButton({
-    required IconData icon,
-    required String label,
-    required bool isDark,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[850] : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 8),
-            Text(label),
-          ],
-        ),
       ),
     );
   }

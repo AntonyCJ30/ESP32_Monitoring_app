@@ -10,9 +10,19 @@ class AuthController extends ChangeNotifier {
   bool loggedIn = false;   // auth state
   String? error;           // error message for UI
 
+  String? _email;          // cached email for UI
+
+  /// READ-ONLY GETTER FOR UI
+  String get email => _email ?? 'Unknown';
+
   /// CALLED ON APP START (auto-login)
   Future<void> checkAutoLogin() async {
     loggedIn = await _service.isLoggedIn();
+
+    if (loggedIn) {
+      _email = await _service.getUserEmail();
+    }
+
     loading = false;
     notifyListeners();
   }
@@ -34,7 +44,9 @@ class AuthController extends ChangeNotifier {
     loading = false;
     loggedIn = success;
 
-    if (!success) {
+    if (success) {
+      _email = await _service.getUserEmail();
+    } else {
       error = "Invalid credentials";
     }
 
@@ -45,7 +57,10 @@ class AuthController extends ChangeNotifier {
   /// LOGOUT
   Future<void> logout() async {
     await _service.logout();
+
     loggedIn = false;
+    _email = null;
+
     notifyListeners();
   }
 }

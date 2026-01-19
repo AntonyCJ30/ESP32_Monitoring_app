@@ -4,8 +4,8 @@ enum BleState {
   connecting,
   connected,
   provisioning,
+  wifiScanDone,
   wifiConnected,
-  wifiFailed,
   provisioned,
   error,
 }

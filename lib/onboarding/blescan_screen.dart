@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,32 +21,52 @@ class _ScanScreenState extends State<ScanScreen> {
   bool _navigated = false;
 
   @override
-@override
-void initState() {
-  super.initState();
+  void initState() {
+    super.initState();
 
-  _controller = context.read<BleController>();
+    _controller = context.read<BleController>();
 
-  _listener = () {
-    debugPrint("SCAN LISTENER STATE = ${_controller.state}");
 
-    if (_controller.state == BleState.connected && !_navigated) {
-      _navigated = true;
-      debugPrint("NAVIGATING TO PROVISION");
+  Timer.periodic(const Duration(seconds: 5), (t) {
+  if (!mounted) {
+    t.cancel();
+    return;
+  }
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ProvisionScreen()),
-      );
-    }
+  if (_controller.state == BleState.scanning) {
+    _controller.startScan(); // clears list and rescans
+  }
+});
 
-    if (_controller.state == BleState.idle ||
-        _controller.state == BleState.error) {
-      _navigated = false;
-    }
-  };
 
-  _controller.addListener(_listener);
-}
+    // -------- listen for connection -> navigate --------
+    _listener = () {
+      debugPrint("SCAN LISTENER STATE = ${_controller.state}");
+
+      if (_controller.state == BleState.connected && !_navigated) {
+        _navigated = true;
+        debugPrint("NAVIGATING TO PROVISION");
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ProvisionScreen()),
+        );
+      }
+
+      if (_controller.state == BleState.idle ||
+          _controller.state == BleState.error) {
+        _navigated = false;
+      }
+    };
+
+    _controller.addListener(_listener);
+
+    // -------- auto start scanning --------
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_controller.scanning) {
+        _controller.startScan();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -60,50 +82,69 @@ void initState() {
         controller.state == BleState.connecting;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Scan for Device")),
+      appBar: AppBar(
+        title: const Text("Find Device"),
+      ),
+
       body: Column(
         children: [
           const SizedBox(height: 12),
 
-          ElevatedButton(
-            onPressed: controller.toggleScan,
-            child: Text(
-              controller.scanning
-                  ? "Stop BLE Scan"
-                  : "Start BLE Scan",
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
+          /// STATUS
           Text(
-            controller.statusMessage,
+            isConnecting
+                ? "Connecting to device..."
+                : "Searching for nearby devices",
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
 
-          Expanded(
-            child: ListView.builder(
-              itemCount: controller.scanResults.length,
-              itemBuilder: (_, i) {
-                final r = controller.scanResults[i];
+          const SizedBox(height: 12),
 
-                return ListTile(
-                  title: Text(
-                    r.advertisementData.advName.isNotEmpty
-                        ? r.advertisementData.advName
-                        : "Unknown Device",
-                  ),
-                  subtitle: Text(r.device.id.id),
-                  trailing: ElevatedButton(
-                    onPressed: isConnecting
-                        ? null
-                        : () => controller.connect(r.device),
-                    child: const Text("Connect"),
-                  ),
-                );
-              },
-            ),
+          /// DEVICE LIST OR LOADER
+         Expanded(
+  child: controller.scanResults.isEmpty
+      ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              Text(
+                controller.statusMessage.isNotEmpty
+                    ? controller.statusMessage
+                    : "Searching for nearby devices...",
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
+        )
+      : ListView.builder(
+          itemCount: controller.scanResults.length,
+          itemBuilder: (_, i) {
+            final r = controller.scanResults[i];
+
+            final name =
+                r.advertisementData.advName.isNotEmpty
+                    ? r.advertisementData.advName
+                    : "ESP32 Device";
+
+            return Card(
+              child: ListTile(
+                leading: const Icon(Icons.bluetooth),
+                title: Text(name),
+                subtitle: Text(r.device.id.id),
+                trailing: ElevatedButton(
+                  onPressed: isConnecting
+                      ? null
+                      : () => controller.connect(r.device),
+                  child: const Text("Connect"),
+                ),
+              ),
+            );
+          },
+        ),
+),
+
         ],
       ),
     );

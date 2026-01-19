@@ -5,19 +5,26 @@ import 'auth/auth_controller.dart';
 import 'auth/auth_service.dart';
 
 import 'screens/app_entry_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'onboarding/onboarding_screen.dart';
+import 'routes/dashboard_route.dart';
 
 void main() {
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AuthController>(
-          create: (_) => AuthController(AuthService()),
-        ),
-      ],
-      child: const MyApp(),
+ MultiProvider(
+  providers: [
+    Provider<AuthService>(
+      create: (_) => AuthService(),
     ),
+
+    ChangeNotifierProvider<AuthController>(
+      create: (context) => AuthController(
+        context.read<AuthService>(),
+      ),
+    ),
+  ],
+  child: const MyApp(),
+)
+
   );
 }
 
@@ -40,13 +47,22 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      // App decides where to go (auth / onboarding / dashboard)
+      // Entry decision screen (auth / onboarding / dashboard)
       home: const AppEntryScreen(),
 
+      // Simple static routes
       routes: {
-        // 👇 DIRECT onboarding (no route wrapper)
         "/onboarding": (_) => const OnboardingScreen(),
-        DashboardScreen.routeName: (_) => const DashboardScreen(),
+      },
+
+      // Feature routes with wiring (Dashboard)
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case DashboardRoute.routeName:
+            return DashboardRoute.route();
+          default:
+            return null;
+        }
       },
     );
   }

@@ -1,10 +1,16 @@
+
+
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+
 
 class AuthController extends ChangeNotifier {
   final AuthService _service;
 
+  
+
   AuthController(this._service);
+
 
   bool loading = true;     // for splash / auto-login
   bool loggedIn = false;   // auth state
@@ -60,6 +66,8 @@ class AuthController extends ChangeNotifier {
 
     loggedIn = false;
     _email = null;
+
+    
 
     notifyListeners();
   }

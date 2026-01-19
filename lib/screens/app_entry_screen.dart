@@ -5,7 +5,7 @@ import '../auth/auth_controller.dart';
 import '../auth/token_storage.dart';
 
 import 'login_screen.dart';
-import 'dashboard_screen.dart';
+import '../routes/dashboard_route.dart';
 import '../onboarding/onboarding_screen.dart';
 
 class AppEntryScreen extends StatefulWidget {
@@ -60,7 +60,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 // ✅ Logged in and device paired → Dashboard
     Navigator.pushReplacementNamed(
       context,
-      DashboardScreen.routeName,
+      DashboardRoute.routeName,
     );
   }
 

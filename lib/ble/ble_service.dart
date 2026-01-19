@@ -101,6 +101,14 @@ class BleService {
     await _rxChar!.write(payload, withoutResponse: false);
   }
 
+  Future<void> sendRaw(String msg) async {
+  if (_rxChar == null) return;
+
+  final payload = utf8.encode(msg + '\n');
+  await _rxChar!.write(payload, withoutResponse: false);
+}
+
+
   // ---------- DISCONNECT ----------
   Future<void> disconnect() async {
     try {

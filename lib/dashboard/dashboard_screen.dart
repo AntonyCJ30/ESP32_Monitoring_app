@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'dashboard_controller.dart';
 import 'dashboard_state.dart';
+import '../screens/app_entry_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,7 +13,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -46,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Patient Dashboard"),
+        
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -91,12 +92,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : "Last updated: ${state.lastUpdated}",
                 ),
                 trailing: Icon(
-                  state.criticalAlert
-                      ? Icons.warning
-                      : Icons.check_circle,
-                  color: state.criticalAlert
-                      ? Colors.red
-                      : Colors.green,
+                  state.criticalAlert ? Icons.warning : Icons.check_circle,
+                  color: state.criticalAlert ? Colors.red : Colors.green,
                 ),
               ),
             ),
@@ -143,16 +140,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // ───────── Actions ─────────
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: controller.refresh,
-                    child: const Text("Refresh"),
-                  ),
-                ),
+                
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: controller.logout,
+                    onPressed: () async {
+                      await controller.logout();
+                       if (!mounted) return;
+                       
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (_) => const AppEntryScreen()),
+                        (_) => false,
+                      );
+                    },
                     child: const Text("Logout"),
                   ),
                 ),

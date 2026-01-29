@@ -16,30 +16,25 @@ class AppEntryScreen extends StatefulWidget {
 }
 
 class _AppEntryScreenState extends State<AppEntryScreen> {
+  bool _navigated = false; // ensures navigation happens once
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _decide();
   }
 
   Future<void> _decide() async {
-    final auth = context.read<AuthController>();
+    if (_navigated) return;
 
-    // 1. Restore login session
-    await auth.checkAutoLogin();
+    final auth = context.watch<AuthController>();
 
-    // 2. Check if device already provisioned
-    String? deviceToken;
-    if (auth.loggedIn) {
-      deviceToken = await TokenStorage.getDeviceToken();
-    }
+    // 1️⃣ Wait until Firebase auth state is resolved
+    if (auth.loading) return;
 
-    if (!mounted) return;
+    _navigated = true;
 
-    // 3. Navigate exactly once
-
-    // ❌ Not logged in → Login
-    // ❌ Not logged in → Login
+    // 2️⃣ Not logged in → Login
     if (!auth.loggedIn) {
       Navigator.pushReplacement(
         context,
@@ -48,7 +43,12 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
       return;
     }
 
-// ❌ Logged in but no device paired → BLE Onboarding
+    // 3️⃣ Logged in → check device provisioning
+    final deviceToken = await TokenStorage.getDeviceToken();
+
+    if (!mounted) return;
+
+    // 4️⃣ Logged in but no device → Onboarding
     if (deviceToken == null) {
       Navigator.pushReplacementNamed(
         context,
@@ -57,7 +57,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
       return;
     }
 
-// ✅ Logged in and device paired → Dashboard
+    // 5️⃣ Logged in + device paired → Dashboard
     Navigator.pushReplacementNamed(
       context,
       DashboardRoute.routeName,
@@ -66,7 +66,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Splash while deciding
+    // Splash screen while deciding
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(),

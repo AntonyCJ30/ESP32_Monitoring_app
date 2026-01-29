@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import 'firebase_options.dart';
 
 import 'auth/auth_controller.dart';
 import 'auth/auth_service.dart';
@@ -8,23 +11,27 @@ import 'screens/app_entry_screen.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'routes/dashboard_route.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(
- MultiProvider(
-  providers: [
-    Provider<AuthService>(
-      create: (_) => AuthService(),
+    MultiProvider(
+      providers: [
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        ChangeNotifierProvider<AuthController>(
+          create: (context) => AuthController(
+            context.read<AuthService>(),
+          ),
+        ),
+      ],
+      child: const MyApp(),
     ),
-
-    ChangeNotifierProvider<AuthController>(
-      create: (context) => AuthController(
-        context.read<AuthService>(),
-      ),
-    ),
-  ],
-  child: const MyApp(),
-)
-
   );
 }
 
@@ -50,12 +57,10 @@ class MyApp extends StatelessWidget {
       // Entry decision screen (auth / onboarding / dashboard)
       home: const AppEntryScreen(),
 
-      // Simple static routes
       routes: {
         "/onboarding": (_) => const OnboardingScreen(),
       },
 
-      // Feature routes with wiring (Dashboard)
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case DashboardRoute.routeName:

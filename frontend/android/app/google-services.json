@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "820669670206",
+    "project_id": "medi-app-c7100",
+    "storage_bucket": "medi-app-c7100.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820669670206:android:1e660fe0cdd94eabb6426f",
+        "android_client_info": {
+          "package_name": "com.example.new_work"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5hMe-XdEkfVNkCV_0T0chH8k0Hc5OW8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

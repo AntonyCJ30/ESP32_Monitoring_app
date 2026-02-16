@@ -25,16 +25,9 @@ class BleService {
 
   // ---------- SCAN ----------
   Stream<List<ScanResult>> scan() {
-    FlutterBluePlus.startScan(
-      androidScanMode: AndroidScanMode.lowLatency,
-    );
+   FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+   return FlutterBluePlus.scanResults;
 
-    return FlutterBluePlus.scanResults.map(
-      (results) => results
-          .where((r) => r.advertisementData.serviceUuids
-              .contains(BleConfig.provisioningService))
-          .toList(),
-    );
   }
 
   Future<void> stopScan() async {

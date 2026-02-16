@@ -4,14 +4,14 @@ import 'package:provider/provider.dart';
 import '../auth/auth_controller.dart';
 import 'app_entry_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<SignupScreen> {
   final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController passCtrl = TextEditingController();
 
@@ -28,18 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    /// ✅ After login success → return to AppEntry (only once)
-    if (auth.loggedIn && !auth.loading && !_navigated) {
-      _navigated = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AppEntryScreen()),
-          (route) => false,
-        );
-      });
-    }
 
     return Scaffold(
       backgroundColor:
@@ -170,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: auth.loading
                             ? null
                             : () {
-                                auth.login(
+                                auth.signUp(
                                   emailCtrl.text.trim(),
                                   passCtrl.text.trim(),
                                 );
@@ -185,9 +173,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               )
                             : const Text(
-                                "Log In",
-                                style:
-                                    TextStyle(fontWeight: FontWeight.w600),
+                                "Create Account",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                       ),
                     ),
@@ -196,21 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const SizedBox(height: 24),
-
-              /// Footer
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text("Don't have an account? "),
-                  Text(
-                    "Sign up for free",
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),

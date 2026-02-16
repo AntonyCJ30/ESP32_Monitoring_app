@@ -60,6 +60,7 @@ class BleController extends ChangeNotifier {
 
     _scanSub = _service.scan().listen((results) {
       for (final r in results) {
+          print("Found device: ${r.device.name} - ${r.device.id}");
         if (!scanResults.any((e) => e.device.id == r.device.id)) {
           scanResults.add(r);
         }

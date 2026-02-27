@@ -1,8 +1,8 @@
 const admin = require("firebase-admin");
+const serviceAccount = require("../../keys/backend-service-account.json");
 
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  databaseURL: process.env.FIREBASE_DB_URL,
+  credential: admin.credential.cert(serviceAccount),
 });
 
 module.exports = admin;

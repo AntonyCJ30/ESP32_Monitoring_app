@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dashboard_state.dart';
 import 'dashboard_service.dart';
 import '../auth/auth_controller.dart';
+
 
 class DashboardController extends ChangeNotifier {
   final DashboardService _service;
@@ -10,47 +12,65 @@ class DashboardController extends ChangeNotifier {
   DashboardState _state = DashboardState.initial();
   DashboardState get state => _state;
 
-  DashboardController(this._service,this._authController);
+  StreamSubscription? _vitalsSubscription;
 
-  /// Load dashboard data
-  Future<void> loadDashboard() async {
-    _state = _state.copyWith(status: DashboardStatus.loading);
+  DashboardController(this._service, this._authController);
+
+  /// Start listening to real-time vitals
+Future<void> listenToVitals() async {
+  final user = _authController.currentUser;
+  if (user == null) return;
+
+  _state = _state.copyWith(status: DashboardStatus.loading);
+  notifyListeners();
+
+  final deviceId = await _service.getFirstDeviceId(user.uid);
+
+  if (deviceId == null) {
+    _state = _state.copyWith(status: DashboardStatus.error);
     notifyListeners();
-
-    try {
-      final data = await _service.fetchVitals();
-
-      _state = _state.copyWith(
-        status: DashboardStatus.ready,
-        online: data['online'] as bool,
-        heartRate: data['heartRate'] as int,
-        spo2: data['spo2'] as int,
-        bodyTemperature: data['bodyTemperature'] as double,
-        respirationRate: data['respirationRate'] as int,
-        lastUpdated: DateTime.now(),
-        criticalAlert: _isCritical(data),
-      );
-    } catch (e) {
-      _state = _state.copyWith(status: DashboardStatus.error);
-    }
-
-    notifyListeners();
+    return;
   }
 
-  bool _isCritical(Map<String, dynamic> data) {
-    final hr = data['heartRate'] as int;
-    final spo2 = data['spo2'] as int;
-    final temp = data['bodyTemperature'] as double;
+  _vitalsSubscription?.cancel();
 
-    return hr < 40 || hr > 120 || spo2 < 92 || temp > 38.0;
-  }
+  _vitalsSubscription =
+      _service.streamDevice(user.uid, deviceId).listen((data) {
 
-  Future<void> refresh() async {
-    await loadDashboard();
+    _state = _state.copyWith(
+      status: DashboardStatus.ready,
+      online: data['online'] as bool? ?? false,
+      heartRate: data['heartRate'] as int? ?? 0,
+      spo2: data['spo2'] as int? ?? 0,
+      bodyTemperature:
+          (data['bodyTemperature'] as num?)?.toDouble() ?? 0.0,
+      respirationRate: data['respirationRate'] as int? ?? 0,
+      lastUpdated: data['lastUpdated'] as DateTime?,
+      deviceName: data['bedSide'] ?? "Patient Monitor",
+      criticalAlert: _isCritical(data),
+    );
+
+    notifyListeners();
+  });
+}
+
+ bool _isCritical(Map<String, dynamic> data) {
+  final hr = (data['heartRate'] as num?)?.toInt() ?? 0;
+  final spo2 = (data['spo2'] as num?)?.toInt() ?? 0;
+  final temp = (data['bodyTemperature'] as num?)?.toDouble() ?? 0.0;
+
+  return hr < 40 || hr > 120 || spo2 < 92 || temp > 38.0;
+}
+
+  /// Stop listening (IMPORTANT to avoid memory leaks)
+  @override
+  void dispose() {
+    _vitalsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> logout() async {
-        debugPrint("🔥 DashboardController.logout called");
-      _authController.logout();
+    _vitalsSubscription?.cancel();
+    await _authController.logout();
   }
 }

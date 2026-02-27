@@ -27,21 +27,10 @@ class _ScanScreenState extends State<ScanScreen> {
     _controller = context.read<BleController>();
 
 
-  Timer.periodic(const Duration(seconds: 5), (t) {
-  if (!mounted) {
-    t.cancel();
-    return;
-  }
-
-  if (_controller.state == BleState.scanning) {
-    _controller.startScan(); // clears list and rescans
-  }
-});
-
 
     // -------- listen for connection -> navigate --------
     _listener = () {
-      debugPrint("SCAN LISTENER STATE = ${_controller.state}");
+      // debugPrint("SCAN LISTENER STATE = ${_controller.state}");
 
       if (_controller.state == BleState.connected && !_navigated) {
         _navigated = true;
@@ -69,10 +58,12 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   @override
-  void dispose() {
-    _controller.removeListener(_listener);
-    super.dispose();
-  }
+void dispose() {
+  _controller.stopScan(); // 🔥 add this
+  _controller.removeListener(_listener);
+  super.dispose();
+}
+
 
   @override
   Widget build(BuildContext context) {

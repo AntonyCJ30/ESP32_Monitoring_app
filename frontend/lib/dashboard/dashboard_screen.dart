@@ -19,7 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Trigger initial dashboard load ONCE
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DashboardController>().loadDashboard();
+      context.read<DashboardController>().listenToVitals();
     });
   }
 
@@ -30,8 +30,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // ───────── Loading ─────────
     if (state.status == DashboardStatus.loading) {
+       print("Dashboard status: ${state.status}");
       return const Scaffold(
+        
         body: Center(child: CircularProgressIndicator()),
+       
       );
     }
 

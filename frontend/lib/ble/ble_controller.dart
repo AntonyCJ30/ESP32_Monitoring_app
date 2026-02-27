@@ -5,10 +5,13 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'ble_service.dart';
 import 'ble_state.dart';
 import '../auth/token_storage.dart';
+import '../services/device_service.dart';
 
 class BleController extends ChangeNotifier {
   final BleService _service;
-  BleController(this._service);
+  BleController(this._service){
+    
+  }
 
   // ---------- STATE ----------
   BleState state = BleState.idle;
@@ -40,38 +43,39 @@ class BleController extends ChangeNotifier {
   }
 
   // ---------- SCAN ----------
-  void toggleScan() {
-    scanning ? stopScan() : startScan();
-  }
+ void toggleScan() {
+  if (provisioning) return;
+  scanning ? stopScan() : startScan();
+}
 
-  void startScan() {
-    scanResults.clear();
 
-    state = BleState.scanning;
-    statusMessage = "Scanning devices...";
-    notifyListeners();
+Future<void> startScan() async {
+  await stopScan(); // prevent duplicates
+  scanResults.clear();
 
-   Future.delayed(const Duration(seconds: 10), () {
-  if (state == BleState.scanning && scanResults.isEmpty) {
-    statusMessage = "No device found. Make sure device is powered on.";
-    notifyListeners();
-  }
-});
+  state = BleState.scanning;
+  statusMessage = "Scanning devices...";
+  notifyListeners();
 
-    _scanSub = _service.scan().listen((results) {
-      for (final r in results) {
-          print("Found device: ${r.device.name} - ${r.device.id}");
-        if (!scanResults.any((e) => e.device.id == r.device.id)) {
-          scanResults.add(r);
-        }
+  await _service.startScan();
+
+  _scanSub = _service.scanResults().listen((results) {
+    for (final r in results) {
+      if (!scanResults.any((e) => e.device.id == r.device.id)) {
+        scanResults.add(r);
       }
+    }
+    notifyListeners();
+  });
+
+  // fallback message
+  Future.delayed(const Duration(seconds: 10), () {
+    if (state == BleState.scanning && scanResults.isEmpty) {
+      statusMessage = "No device found. Make sure device is powered on.";
       notifyListeners();
-    });
-
-    // after starting scan
-
-
-  }
+    }
+  });
+}
 
   Future<void> stopScan() async {
     await _service.stopScan();
@@ -84,37 +88,37 @@ class BleController extends ChangeNotifier {
   }
 
   // ---------- CONNECT ----------
-  Future<void> connect(BluetoothDevice device) async {
-    try {
-      await stopScan();
+ Future<void> connect(BluetoothDevice device) async {
+  try {
+    await stopScan();
 
-      // reset old provisioning data
-      wifiList.clear();
-      selectedSsid = null;
-      wifiOk = false;
-      deviceToken = null;
+    await _rxSub?.cancel(); // 🔥 add this
 
-      state = BleState.connecting;
-      statusMessage = "Connecting to device...";
-      notifyListeners();
+    wifiList.clear();
+    selectedSsid = null;
+    wifiOk = false;
+    deviceToken = null;
 
-      await _service.connect(device);
+    state = BleState.connecting;
+    statusMessage = "Connecting to device...";
+    notifyListeners();
 
-      state = BleState.connected;
-      statusMessage = "Connected. Scanning Wi-Fi...";
-      notifyListeners();
+    await _service.connect(device);
 
-      _rxSub = _service.txStream().listen(_handleMessage);
+    state = BleState.connected;
+    statusMessage = "Connected. Scanning Wi-Fi...";
+    notifyListeners();
 
-      // 🔥 ask ESP32 to scan Wi-Fi
-      await _service.sendRaw("SCAN_WIFI");
+    _rxSub = _service.txStream().listen(_handleMessage);
 
-    } catch (e) {
-      state = BleState.error;
-      statusMessage = "Connection failed";
-      notifyListeners();
-    }
+    await _service.sendRaw("SCAN_WIFI");
+
+  } catch (e) {
+    state = BleState.error;
+    statusMessage = "Connection failed";
+    notifyListeners();
   }
+}
 
   // ---------- WIFI SELECTION ----------
   void setSelectedSsid(String? ssid) {
@@ -167,16 +171,28 @@ class BleController extends ChangeNotifier {
       statusMessage = "Select Wi-Fi network";
     }
 
-    else if (msg.startsWith("TOKEN:")) {
-      final token = msg.substring(6).trim();
+ else if (msg.startsWith("TOKEN:")) {
+  final token = msg.substring(6).trim();
 
-      await TokenStorage.saveDeviceToken(token);
-      deviceToken = token;
+  try {
+    await TokenStorage.saveDeviceToken(token);
+    deviceToken = token;
 
-      provisioning = false;
-      state = BleState.provisioned;
-      statusMessage = "Provisioning complete";
-    }
+    // 🔥 Proper backend call
+    await DeviceService.registerDevice(token);
+
+    provisioning = false;
+    state = BleState.provisioned;
+    statusMessage = "Provisioning complete";
+
+  } catch (e) {
+    print("❌ Device registration error: $e");
+    state = BleState.error;
+    statusMessage = "Device registration failed";
+  }
+
+  notifyListeners();
+}
 
     notifyListeners();
   }

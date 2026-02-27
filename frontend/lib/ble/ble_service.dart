@@ -5,13 +5,18 @@ import 'ble_config.dart';
 
 class BleService {
   BluetoothDevice? _device;
-  BluetoothCharacteristic? _rxChar; // write
-  BluetoothCharacteristic? _txChar; // notify
+  BluetoothCharacteristic? _rxChar;
+  BluetoothCharacteristic? _txChar;
 
   final StringBuffer _rxBuffer = StringBuffer();
 
-  // ---------- INIT ----------
+  bool _initialized = false;
+  bool _isScanning = false;
+
+  // ---------- INIT (run once) ----------
   Future<void> init() async {
+    if (_initialized) return;
+
     await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
@@ -21,21 +26,40 @@ class BleService {
     if (!await FlutterBluePlus.isOn) {
       await FlutterBluePlus.turnOn();
     }
+
+    _initialized = true;
   }
 
-  // ---------- SCAN ----------
-  Stream<List<ScanResult>> scan() {
-   FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
-   return FlutterBluePlus.scanResults;
+  // ---------- SCAN CONTROL ----------
+  Stream<List<ScanResult>> scanResults() => FlutterBluePlus.scanResults;
 
+  Future<void> startScan() async {
+    if (_isScanning) return;
+
+    print("START SCAN CALLED");
+
+    print(await FlutterBluePlus.adapterState.first);
+
+    await init();
+
+    _isScanning = true;
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+
+    Future.delayed(const Duration(seconds: 10), () {
+      _isScanning = false;
+    });
   }
 
   Future<void> stopScan() async {
+    if (!_isScanning) return;
     await FlutterBluePlus.stopScan();
+    _isScanning = false;
   }
 
   // ---------- CONNECT ----------
   Future<void> connect(BluetoothDevice device) async {
+    if (_device?.remoteId == device.remoteId) return;
+
     _device = device;
 
     await _device!.connect(
@@ -89,18 +113,15 @@ class BleService {
   // ---------- SEND ----------
   Future<void> sendJson(Map<String, dynamic> data) async {
     if (_rxChar == null) return;
-
     final payload = utf8.encode(jsonEncode(data) + '\n');
     await _rxChar!.write(payload, withoutResponse: false);
   }
 
   Future<void> sendRaw(String msg) async {
-  if (_rxChar == null) return;
-
-  final payload = utf8.encode(msg + '\n');
-  await _rxChar!.write(payload, withoutResponse: false);
-}
-
+    if (_rxChar == null) return;
+    final payload = utf8.encode(msg + '\n');
+    await _rxChar!.write(payload, withoutResponse: false);
+  }
 
   // ---------- DISCONNECT ----------
   Future<void> disconnect() async {

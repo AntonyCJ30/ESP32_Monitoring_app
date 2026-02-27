@@ -1,14 +1,20 @@
 require("dotenv").config();
-const express = require("express");
+require("./config/firebase");
+require("./config/bigquery")
 
-const deviceRoutes = require("./routes/device.routes");
+const express = require("express");
+const deviceRoute = require("./routes/device.route");
+const userRoute  = require("./routes/user.route");
 
 const app = express();
 app.use(express.json());
 
-app.use("/api", deviceRoutes);
+app.use("/api", deviceRoute);
+app.use("/api",userRoute)
 
 const PORT = process.env.PORT || 3000;
+
+
 app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+  console.log(`🚀 Backend running on port ${PORT}`);
 });

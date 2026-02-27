@@ -1,34 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'auth_service.dart';
 
 class AuthController extends ChangeNotifier {
   final AuthService _service;
 
   AuthController(this._service) {
+    print("Firebase user: ${FirebaseAuth.instance.currentUser}");
     _listenToAuthState();
   }
 
-  bool loading = true;      // splash / initial load
-  bool loggedIn = false;    // auth state
-  String? error;            // error message for UI
+  Stream<User?> get authStateChanges => _service.authStateChanges;
+  User? get currentUser => _service.currentUser;
 
+
+
+  bool loading = true;
+  bool loggedIn = false;
+  String? error;
   String? _email;
 
-  /// READ-ONLY GETTER FOR UI
+  /// 🔹 Backend URL
+  final String _baseUrl = "http://192.168.1.3:3000";
+
+  /// 🔹 Getter for UI
   String get email => _email ?? 'Unknown';
 
-  /// 🔄 LISTEN TO FIREBASE AUTH STATE
+  /// 🔄 Listen to Firebase Auth State
   void _listenToAuthState() {
-    _service.authStateChanges.listen((User? user) {
+    _service.authStateChanges.listen((User? user) async {
       if (user == null) {
-        // Logged out
         loggedIn = false;
         _email = null;
       } else {
-        // Logged in
         loggedIn = true;
         _email = user.email;
+
+        // 🔐 Get Firebase ID token
+        final token = await user.getIdToken(true);
+
+        if (token != null) {
+          await _sendTokenToBackend(token);
+        }
       }
 
       loading = false;
@@ -36,7 +51,30 @@ class AuthController extends ChangeNotifier {
     });
   }
 
-  /// 🔐 LOGIN (Email + Password)
+  /// 🔐 SIGN UP
+  Future<bool> signUp(String email, String password) async {
+    if (email.isEmpty || password.isEmpty) {
+      error = "Email and password required";
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      loading = true;
+      error = null;
+      notifyListeners();
+
+      await _service.signUp(email, password);
+      return true; // listener handles backend sync
+    } on FirebaseAuthException catch (e) {
+      error = _mapFirebaseError(e);
+      loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 🔐 LOGIN
   Future<bool> login(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
       error = "Email and password required";
@@ -50,25 +88,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
 
       await _service.login(email, password);
-      // Success will be reflected automatically via authStateChanges
-      return true;
-    } on FirebaseAuthException catch (e) {
-      error = _mapFirebaseError(e);
-      loading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// 🔐 SIGN UP (optional but recommended)
-  Future<bool> signUp(String email, String password) async {
-    try {
-      loading = true;
-      error = null;
-      notifyListeners();
-
-      await _service.signUp(email, password);
-      return true;
+      return true; // listener handles backend sync
     } on FirebaseAuthException catch (e) {
       error = _mapFirebaseError(e);
       loading = false;
@@ -80,10 +100,30 @@ class AuthController extends ChangeNotifier {
   /// 🚪 LOGOUT
   Future<void> logout() async {
     await _service.logout();
-    // authStateChanges will handle state reset
   }
 
-  /// 🔎 MAP FIREBASE ERRORS TO UI-FRIENDLY TEXT
+  /// 🌐 Send Token to Backend
+  Future<void> _sendTokenToBackend(String token) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$_baseUrl/api/create-user"),
+        headers: {
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Backend verified user");
+      } else {
+        print("Status: ${response.statusCode}");
+                print("Body: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Backend error: $e");
+    }
+  }
+
+  /// 🔎 Firebase Error Mapper
   String _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
